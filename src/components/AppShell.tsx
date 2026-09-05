@@ -9,12 +9,22 @@ const nav = [
   { to: "/caixa", label: "Caixa", icon: Wallet },
 ] as const;
 
-export function AppShell({ title, children }: { title: string; children: ReactNode }) {
+export function AppShell({
+  title,
+  children,
+  hideSidebar = false,
+}: {
+  title: string;
+  children: ReactNode;
+  hideSidebar?: boolean;
+}) {
   const { config, caixa, operador, toggleCadUnico } = useStore();
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="sticky top-0 flex h-screen w-[112px] shrink-0 flex-col items-center gap-2 bg-sidebar py-5 text-sidebar-foreground shadow-soft">
+      <aside
+        className={`sticky top-0 h-screen w-[112px] shrink-0 flex-col items-center gap-2 bg-sidebar py-5 text-sidebar-foreground shadow-soft ${hideSidebar ? "hidden" : "flex"}`}
+      >
         <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-accent text-2xl shadow-soft">
           🍽️
         </div>

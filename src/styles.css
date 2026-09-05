@@ -110,4 +110,35 @@
   a.bg-accent:hover {
     background-color: #176a45; 
   }
+<<<<<<< HEAD
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible;
+  }
+
+  .print-sheet {
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .screen-only {
+    display: none;
+  }
+}
+=======
+}
+>>>>>>> origin/main
