@@ -9,7 +9,10 @@ import {
   DollarSign,
   IdCard,
   Loader2,
+  Pencil,
+  Save,
   ShieldCheck,
+  X,
   UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -96,10 +99,14 @@ function Clientes() {
   const [novoNome, setNovoNome] = useState("");
   const [novoCpf, setNovoCpf] = useState("");
   const [novoNascimento, setNovoNascimento] = useState("");
-  const [novoCadUnico, setNovoCadUnico] = useState<CadStatus>("inativo");
+  const [novoCadUnico, setNovoCadUnico] = useState<CadStatus | null>(null);
   const [statusCadastro, setStatusCadastro] = useState<"form" | "consultando" | "cadunico">("form");
   const [novaRenda, setNovaRenda] = useState("");
   const [resultadoCadUnico, setResultadoCadUnico] = useState<ResultadoCadUnico | null>(null);
+  const [editandoCliente, setEditandoCliente] = useState(false);
+  const [editNome, setEditNome] = useState("");
+  const [editCpf, setEditCpf] = useState("");
+  const [editNascimento, setEditNascimento] = useState("");
 
   const lista = clientes.filter(
     (c) =>
@@ -113,7 +120,9 @@ function Clientes() {
     if (!atual || add <= 0 || !pag) return;
     adicionarCredito(atual.cpf, add, pag);
     toast.success(`${brl(add)} em crédito para ${atual.nome} — entrada registrada no caixa`);
+    setSel(null);
     setTelaCliente("dados");
+    setEtapaCredito(1);
     setValor("");
     setPag("");
   };
@@ -123,7 +132,7 @@ function Clientes() {
     setNovoNome("");
     setNovoCpf("");
     setNovoNascimento("");
-    setNovoCadUnico("inativo");
+    setNovoCadUnico(null);
     setStatusCadastro("form");
     setNovaRenda("");
     setResultadoCadUnico(null);
@@ -131,7 +140,7 @@ function Clientes() {
 
   const concluirCadastro = (consulta = resultadoCadUnico) => {
     const rendaMensal = consulta ? consulta.renda : Number(novaRenda.replace(",", ".")) || 0;
-    const cadUnicoFinal = consulta?.situacao ?? novoCadUnico;
+    const cadUnicoFinal = consulta?.situacao ?? novoCadUnico ?? "inativo";
     const valorRegra =
       cadUnicoFinal === "ativo" ? (rendaMensal <= 1200 ? 1 : rendaMensal <= 3000 ? 3 : 7) : 7;
 
@@ -163,6 +172,11 @@ function Clientes() {
       return;
     }
 
+    if (!novoCadUnico) {
+      toast.error("Selecione se o cliente possui CadÚnico.");
+      return;
+    }
+
     if (novoCadUnico === "ativo") {
       setStatusCadastro("consultando");
       setTimeout(() => {
@@ -174,9 +188,51 @@ function Clientes() {
 
     concluirCadastro();
   };
+
+  const iniciarEdicao = (cliente: Cliente) => {
+    setEditNome(cliente.nome);
+    setEditCpf(cliente.cpf);
+    setEditNascimento(cliente.dataNascimento);
+    setEditandoCliente(true);
+  };
+
+  const cancelarEdicao = () => {
+    setEditandoCliente(false);
+    setEditNome("");
+    setEditCpf("");
+    setEditNascimento("");
+  };
+
+  const salvarEdicao = () => {
+    if (!atual) return;
+    const cpfLimpo = editCpf.replace(/\D/g, "");
+    if (!editNome.trim() || cpfLimpo.length !== 11 || !editNascimento.trim()) return;
+    if (clientes.some((c) => c.cpf !== atual.cpf && c.cpf.replace(/\D/g, "") === cpfLimpo)) {
+      toast.error("CPF já cadastrado.");
+      return;
+    }
+
+    const clienteAtualizado: Cliente = {
+      ...atual,
+      nome: editNome.trim(),
+      cpf: maskCpf(editCpf),
+      dataNascimento: editNascimento.trim(),
+    };
+
+    setState((s) => ({
+      ...s,
+      clientes: s.clientes.map((c) => (c.cpf === atual.cpf ? clienteAtualizado : c)),
+    }));
+    setSel(clienteAtualizado);
+    cancelarEdicao();
+    toast.success("Cadastro atualizado com sucesso.");
+  };
   if (telaCadastro) {
     const cadastroValido =
-      novoNome.trim() && novoCpf.replace(/\D/g, "").length === 11 && novoNascimento.trim();
+      novoNome.trim() &&
+      novoCpf.replace(/\D/g, "").length === 11 &&
+      novoNascimento.trim() &&
+      novoCadUnico;
     const situacaoCadUnico =
       resultadoCadUnico?.situacao === "ativo"
         ? "Ativo"
@@ -184,13 +240,27 @@ function Clientes() {
           ? "Inativo"
           : "Não encontrado";
     const cadUnicoAtivo = resultadoCadUnico?.situacao === "ativo";
+    const cadUnicoInativo = resultadoCadUnico?.situacao === "inativo";
+    const valorRegraConsulta =
+      resultadoCadUnico?.situacao === "ativo"
+        ? resultadoCadUnico.renda <= 1200
+          ? 1
+          : resultadoCadUnico.renda <= 3000
+            ? 3
+            : 7
+        : 7;
+    const painelCadUnico = cadUnicoAtivo
+      ? "border-success bg-secondary text-secondary-foreground"
+      : cadUnicoInativo
+        ? "border-accent bg-[#FCE8DD] text-[#D95F2B]"
+        : "border-destructive bg-destructive/10 text-destructive";
 
     return (
       <AppShell title="Novo cadastro">
         <div className="mx-auto max-w-2xl space-y-6">
           <button
             onClick={limparCadastro}
-            className="inline-flex items-center gap-2 rounded-2xl border-2 border-[#263B4D]/20 bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-[#263B4D] shadow-soft transition-colors hover:border-[#263B4D] hover:bg-[#EAF2F6]"
+            className="inline-flex items-center gap-2 rounded-2xl border-2 border-border bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-foreground shadow-soft transition-colors hover:border-primary hover:bg-secondary"
           >
             <ArrowLeft className="size-5" strokeWidth={2.4} />
             Voltar
@@ -209,27 +279,27 @@ function Clientes() {
                     value={novoNome}
                     onChange={(e) => setNovoNome(e.target.value)}
                     placeholder="Nome"
-                    className="w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-accent"
+                    className="w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-primary"
                   />
                   <input
                     value={novoCpf}
                     onChange={(e) => setNovoCpf(maskCpf(e.target.value))}
                     placeholder="CPF"
                     inputMode="numeric"
-                    className="w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-accent"
+                    className="w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-primary"
                   />
                   <input
                     value={novoNascimento}
                     onChange={(e) => setNovoNascimento(maskData(e.target.value))}
                     placeholder="Data de nascimento"
-                    className="w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-accent"
+                    className="w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-primary"
                   />
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setNovoCadUnico("ativo")}
-                    className={`rounded-2xl border-2 px-4 py-5 text-base font-extrabold uppercase ${novoCadUnico === "ativo" ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card hover:border-accent"}`}
+                    className={`rounded-2xl border-2 px-4 py-5 text-base font-extrabold uppercase transition-colors ${novoCadUnico === "ativo" ? "border-primary bg-primary text-primary-foreground shadow-soft" : "border-border bg-card text-foreground hover:border-primary hover:bg-secondary"}`}
                   >
                     Tem CadÚnico
                     <span className="block text-xs font-bold normal-case opacity-80">
@@ -238,7 +308,7 @@ function Clientes() {
                   </button>
                   <button
                     onClick={() => setNovoCadUnico("inativo")}
-                    className={`rounded-2xl border-2 px-4 py-5 text-base font-extrabold uppercase ${novoCadUnico === "inativo" ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card hover:border-accent"}`}
+                    className={`rounded-2xl border-2 px-4 py-5 text-base font-extrabold uppercase transition-colors ${novoCadUnico === "inativo" ? "border-accent bg-[#FCE8DD] text-[#D95F2B] shadow-soft" : "border-border bg-card text-foreground hover:border-accent hover:bg-[#FCE8DD]"}`}
                   >
                     Sem CadÚnico
                     <span className="block text-xs font-bold normal-case opacity-80">
@@ -259,7 +329,7 @@ function Clientes() {
 
             {statusCadastro === "consultando" && (
               <div className="mt-8 flex flex-col items-center rounded-2xl bg-secondary p-8 text-center text-secondary-foreground">
-                <Loader2 className="size-14 animate-spin text-accent" />
+                <Loader2 className="size-14 animate-spin text-primary" />
                 <p className="mt-5 text-2xl font-black uppercase">Consultando CadÚnico</p>
                 <p className="mt-1 text-lg font-bold text-muted-foreground">
                   CPF: {maskCpf(novoCpf)}
@@ -269,15 +339,15 @@ function Clientes() {
 
             {statusCadastro === "cadunico" && resultadoCadUnico && (
               <div className="mt-7">
-                <div
-                  className={`rounded-2xl border-2 p-6 ${cadUnicoAtivo ? "border-success bg-success/10" : "border-warning bg-warning/20"}`}
-                >
+                <div className={`rounded-2xl border-2 p-6 ${painelCadUnico}`}>
                   <div className="flex items-start gap-4">
                     {cadUnicoAtivo ? (
                       <ShieldCheck className="size-12 shrink-0 text-success" strokeWidth={2.5} />
+                    ) : cadUnicoInativo ? (
+                      <CircleAlert className="size-12 shrink-0 text-accent" strokeWidth={2.5} />
                     ) : (
                       <CircleAlert
-                        className="size-12 shrink-0 text-warning-foreground"
+                        className="size-12 shrink-0 text-destructive"
                         strokeWidth={2.5}
                       />
                     )}
@@ -288,7 +358,7 @@ function Clientes() {
                       <h3 className="mt-1 text-3xl font-black uppercase">
                         Situação: {situacaoCadUnico}
                       </h3>
-                      <p className="mt-2 text-base font-semibold text-muted-foreground">
+                      <p className="mt-2 text-base font-semibold text-current/75">
                         CPF consultado automaticamente: {maskCpf(novoCpf)}
                       </p>
                     </div>
@@ -302,7 +372,18 @@ function Clientes() {
                     val={situacaoCadUnico}
                     destaque={cadUnicoAtivo}
                   />
-                  <InfoCard icon={DollarSign} rot="Renda" val={brl(resultadoCadUnico.renda)} />
+                  <InfoCard
+                    icon={DollarSign}
+                    rot="Renda"
+                    val={brl(resultadoCadUnico.renda)}
+                    destaque
+                  />
+                  <InfoCard
+                    icon={CreditCard}
+                    rot="Valor da refeição"
+                    val={brl(valorRegraConsulta)}
+                    destaque
+                  />
                   <InfoCard
                     icon={Cake}
                     rot="Última atualização"
@@ -335,7 +416,7 @@ function Clientes() {
               setValor("");
               setPag("");
             }}
-            className="inline-flex items-center gap-2 rounded-2xl border-2 border-[#263B4D]/20 bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-[#263B4D] shadow-soft transition-colors hover:border-[#263B4D] hover:bg-[#EAF2F6]"
+            className="inline-flex items-center gap-2 rounded-2xl border-2 border-border bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-foreground shadow-soft transition-colors hover:border-primary hover:bg-secondary"
           >
             <ArrowLeft className="size-5" strokeWidth={2.4} />
             Voltar aos dados
@@ -377,7 +458,7 @@ function Clientes() {
                 onChange={(e) => setValor(e.target.value)}
                 placeholder="Valor a adicionar"
                 inputMode="decimal"
-                className="mt-5 w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-2xl font-extrabold outline-none focus:border-accent"
+                className="mt-5 w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-2xl font-extrabold outline-none focus:border-primary"
               />
               <button
                 onClick={() => setEtapaCredito(2)}
@@ -470,18 +551,53 @@ function Clientes() {
     return (
       <AppShell title="Clientes">
         <div className="mx-auto max-w-5xl space-y-6">
-          <button
-            onClick={() => {
-              setSel(null);
-              setTelaCliente("dados");
-              setValor("");
-              setPag("");
-            }}
-            className="inline-flex items-center gap-2 rounded-2xl border-2 border-[#263B4D]/20 bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-[#263B4D] shadow-soft transition-colors hover:border-[#263B4D] hover:bg-[#EAF2F6]"
-          >
-            <ArrowLeft className="size-5" strokeWidth={2.4} />
-            Voltar
-          </button>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              onClick={() => {
+                setSel(null);
+                setTelaCliente("dados");
+                setValor("");
+                setPag("");
+                cancelarEdicao();
+              }}
+              className="inline-flex items-center gap-2 rounded-2xl border-2 border-border bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-foreground shadow-soft transition-colors hover:border-primary hover:bg-secondary"
+            >
+              <ArrowLeft className="size-5" strokeWidth={2.4} />
+              Voltar
+            </button>
+
+            {!editandoCliente ? (
+              <button
+                onClick={() => iniciarEdicao(atual)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-accent px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-accent-foreground shadow-soft"
+              >
+                <Pencil className="size-5" strokeWidth={2.4} />
+                Editar
+              </button>
+            ) : (
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelarEdicao}
+                  className="inline-flex items-center gap-2 rounded-2xl border-2 border-border bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-foreground shadow-soft transition-colors hover:border-primary hover:bg-secondary"
+                >
+                  <X className="size-5" strokeWidth={2.4} />
+                  Cancelar
+                </button>
+                <button
+                  onClick={salvarEdicao}
+                  disabled={
+                    !editNome.trim() ||
+                    editCpf.replace(/\D/g, "").length !== 11 ||
+                    !editNascimento.trim()
+                  }
+                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-primary-foreground shadow-soft disabled:bg-muted disabled:text-muted-foreground"
+                >
+                  <Save className="size-5" strokeWidth={2.4} />
+                  Salvar
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="card-soft border-l-8 border-l-primary p-8">
             <div className="flex flex-wrap items-start justify-between gap-5">
@@ -489,11 +605,46 @@ function Clientes() {
                 <p className="text-sm font-extrabold uppercase tracking-widest text-muted-foreground">
                   Dados do cliente
                 </p>
-                <h2 className="mt-2 text-4xl font-black uppercase tracking-tight">{atual.nome}</h2>
-                <p className="mt-1 text-lg font-bold text-muted-foreground">CPF: {atual.cpf}</p>
+                {editandoCliente ? (
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <input
+                      value={editNome}
+                      onChange={(e) => setEditNome(e.target.value)}
+                      placeholder="Nome"
+                      className="rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-primary md:col-span-3"
+                    />
+                    <input
+                      value={editCpf}
+                      onChange={(e) => setEditCpf(maskCpf(e.target.value))}
+                      placeholder="CPF"
+                      inputMode="numeric"
+                      className="rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-primary"
+                    />
+                    <input
+                      value={editNascimento}
+                      onChange={(e) => setEditNascimento(maskData(e.target.value))}
+                      placeholder="Data de nascimento"
+                      inputMode="numeric"
+                      className="rounded-2xl border-2 border-input bg-card px-5 py-4 text-xl font-extrabold outline-none focus:border-primary"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="mt-2 text-4xl font-black uppercase tracking-tight">
+                      {atual.nome}
+                    </h2>
+                    <p className="mt-1 text-lg font-bold text-muted-foreground">CPF: {atual.cpf}</p>
+                  </>
+                )}
               </div>
               <span
-                className={`rounded-full px-5 py-2 text-sm font-extrabold uppercase ${atual.bloqueadoHoje ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"}`}
+                className={`rounded-full px-5 py-2 text-sm font-extrabold uppercase ${
+                  editandoCliente
+                    ? "pointer-events-none bg-muted text-muted-foreground opacity-60"
+                    : atual.bloqueadoHoje
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-success/10 text-success"
+                }`}
               >
                 {atual.bloqueadoHoje ? "Já atendido hoje" : "Liberado"}
               </span>
@@ -502,12 +653,43 @@ function Clientes() {
             <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
               <InfoCard icon={IdCard} rot="CPF" val={atual.cpf} />
               <InfoCard icon={Cake} rot="Nascimento" val={atual.dataNascimento} />
-              <InfoCard icon={ShieldCheck} rot="CadÚnico" val={cadUnicoTexto} />
-              <InfoCard icon={DollarSign} rot="Renda" val={brl(atual.renda)} />
-              <InfoCard icon={CreditCard} rot="Crédito" val={brl(atual.credito)} destaque />
-              <InfoCard icon={ShieldCheck} rot="Valor regra" val={brl(atual.valorRegra)} />
-              <InfoCard icon={IdCard} rot="Refeições" val={String(atual.refeicoes)} />
-              <InfoCard icon={Cake} rot="Último atendimento" val={atual.ultimoAtendimento ?? "—"} />
+              <InfoCard
+                icon={ShieldCheck}
+                rot="CadÚnico"
+                val={cadUnicoTexto}
+                disabled={editandoCliente}
+              />
+              <InfoCard
+                icon={DollarSign}
+                rot="Renda"
+                val={brl(atual.renda)}
+                disabled={editandoCliente}
+              />
+              <InfoCard
+                icon={CreditCard}
+                rot="Crédito"
+                val={brl(atual.credito)}
+                destaque
+                disabled={editandoCliente}
+              />
+              <InfoCard
+                icon={ShieldCheck}
+                rot="Valor regra"
+                val={brl(atual.valorRegra)}
+                disabled={editandoCliente}
+              />
+              <InfoCard
+                icon={IdCard}
+                rot="Refeições"
+                val={String(atual.refeicoes)}
+                disabled={editandoCliente}
+              />
+              <InfoCard
+                icon={Cake}
+                rot="Último atendimento"
+                val={atual.ultimoAtendimento ?? "—"}
+                disabled={editandoCliente}
+              />
             </div>
           </div>
 
@@ -517,7 +699,8 @@ function Clientes() {
                 setTelaCliente("credito");
                 setEtapaCredito(1);
               }}
-              className="w-full rounded-2xl bg-primary py-5 text-lg font-extrabold uppercase text-primary-foreground shadow-soft"
+              disabled={editandoCliente}
+              className="w-full rounded-2xl bg-primary py-5 text-lg font-extrabold uppercase text-primary-foreground shadow-soft disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             >
               Adicionar crédito
             </button>
@@ -535,7 +718,7 @@ function Clientes() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por CPF ou nome"
-              className="min-w-0 flex-1 rounded-2xl border-2 border-input bg-card px-6 py-5 text-xl font-semibold outline-none focus:border-accent"
+              className="min-w-0 flex-1 rounded-2xl border-2 border-input bg-card px-6 py-5 text-xl font-semibold outline-none focus:border-primary"
             />
             <button
               onClick={() => setTelaCadastro(true)}
@@ -549,15 +732,7 @@ function Clientes() {
             <table className="w-full text-left">
               <thead className="bg-muted text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
                 <tr>
-                  {[
-                    "CPF",
-                    "Nome",
-                    "CadÚnico",
-                    "Renda",
-                    "Crédito",
-                    "Último atendimento",
-                    "Status",
-                  ].map((h) => (
+                  {["Nome", "CPF", "CadÚnico", "Crédito", "Status"].map((h) => (
                     <th key={h} className="px-5 py-4">
                       {h}
                     </th>
@@ -575,8 +750,8 @@ function Clientes() {
                     }}
                     className="cursor-pointer border-t border-border text-lg font-semibold hover:bg-secondary/60"
                   >
-                    <td className="px-5 py-4">{c.cpf}</td>
                     <td className="px-5 py-4 font-extrabold">{c.nome}</td>
+                    <td className="px-5 py-4">{c.cpf}</td>
                     <td className="px-5 py-4">
                       {c.cadUnico === "ativo"
                         ? "Ativo"
@@ -584,9 +759,7 @@ function Clientes() {
                           ? "Inativo"
                           : "Sem benefício"}
                     </td>
-                    <td className="px-5 py-4">{brl(c.renda)}</td>
                     <td className="px-5 py-4 font-extrabold text-accent">{brl(c.credito)}</td>
-                    <td className="px-5 py-4">{c.ultimoAtendimento ?? "—"}</td>
                     <td className="px-5 py-4">
                       <span
                         className={`rounded-full px-3 py-1 text-sm font-bold ${
@@ -602,7 +775,7 @@ function Clientes() {
                 ))}
                 {lista.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
                       Nenhum cliente encontrado.
                     </td>
                   </tr>
@@ -621,19 +794,37 @@ function InfoCard({
   rot,
   val,
   destaque = false,
+  disabled = false,
 }: {
   icon: typeof IdCard;
   rot: string;
   val: string;
   destaque?: boolean;
+  disabled?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card px-5 py-4 shadow-sm">
-      <Icon className={`size-6 ${destaque ? "text-accent" : "text-primary"}`} strokeWidth={2.3} />
+    <div
+      aria-disabled={disabled}
+      className={`rounded-2xl border px-5 py-4 shadow-sm ${
+        disabled
+          ? "pointer-events-none border-border bg-muted text-muted-foreground opacity-65"
+          : "border-border bg-card"
+      }`}
+    >
+      <Icon
+        className={`size-6 ${
+          disabled ? "text-muted-foreground" : destaque ? "text-accent" : "text-primary"
+        }`}
+        strokeWidth={2.3}
+      />
       <p className="mt-3 text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
         {rot}
       </p>
-      <p className={`mt-1 text-xl font-black ${destaque ? "text-accent" : "text-foreground"}`}>
+      <p
+        className={`mt-1 text-xl font-black ${
+          disabled ? "text-muted-foreground" : destaque ? "text-accent" : "text-foreground"
+        }`}
+      >
         {val}
       </p>
     </div>

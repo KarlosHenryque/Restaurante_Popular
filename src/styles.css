@@ -39,38 +39,38 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-border: var(--sidebar-border);
   --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
-  --shadow-soft: 0 1px 2px rgb(38 59 77 / 6%), 0 10px 28px rgb(38 59 77 / 10%);
+  --shadow-soft: 0 1px 2px rgb(32 55 71 / 5%), 0 12px 30px rgb(32 55 71 / 10%);
 }
 
 :root {
   --radius: 1rem;
-  --background: #f7f5ef;
-  --foreground: #263b4d;
-  --card: #fffdf8;
-  --card-foreground: #263b4d;
-  --popover: #fffdf8;
-  --popover-foreground: #263b4d;
-  --primary: #2e7d5b;
-  --primary-foreground: #fffdf8;
-  --secondary: #f2e7dc;
-  --secondary-foreground: #263b4d;
-  --muted: #ebe7dd;
-  --muted-foreground: #687888;
-  --accent: #e07a45;
-  --accent-foreground: #fffdf8;
-  --warning: #f1c76b;
-  --warning-foreground: #263b4d;
-  --success: #2e7d5b;
-  --success-foreground: #fffdf8;
-  --destructive: #c4493d;
-  --destructive-foreground: #fffdf8;
-  --border: #e1d9cc;
-  --input: #d7d0c5;
-  --ring: #e07a45;
-  --sidebar: #263b4d;
-  --sidebar-foreground: #fffdf8;
-  --sidebar-accent: #2e7d5b;
-  --sidebar-border: #334f66;
+  --background: #fbf7f0;
+  --foreground: #203747;
+  --card: #ffffff;
+  --card-foreground: #203747;
+  --popover: #ffffff;
+  --popover-foreground: #203747;
+  --primary: #238a5a;
+  --primary-foreground: #ffffff;
+  --secondary: #ddf3e7;
+  --secondary-foreground: #176a45;
+  --muted: #f5efe7;
+  --muted-foreground: #667580;
+  --accent: #f0783e;
+  --accent-foreground: #ffffff;
+  --warning: #f2b84b;
+  --warning-foreground: #203747;
+  --success: #24945e;
+  --success-foreground: #ffffff;
+  --destructive: #d6534a;
+  --destructive-foreground: #ffffff;
+  --border: #ddd3c5;
+  --input: #ddd3c5;
+  --ring: #238a5a;
+  --sidebar: #203747;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #238a5a;
+  --sidebar-border: #315166;
 }
 
 @layer base {
@@ -92,4 +92,16 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-soft);
+}
+
+@layer components {
+  button.bg-primary:not(:disabled):hover,
+  a.bg-primary:hover {
+    background-color: #176a45;
+  }
+
+  button.bg-accent:not(:disabled):hover,
+  a.bg-accent:hover {
+    background-color: #d95f2b;
+  }
 }

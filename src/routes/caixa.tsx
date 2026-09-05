@@ -86,14 +86,14 @@ function CaixaPage() {
             onChange={(e) => setSaldo(e.target.value)}
             placeholder="Saldo inicial R$"
             inputMode="decimal"
-            className="mt-8 w-full rounded-3xl border-4 border-input bg-card px-8 py-6 text-center text-5xl font-extrabold outline-none focus:border-accent"
+            className="mt-8 w-full rounded-3xl border-4 border-input bg-card px-8 py-6 text-center text-5xl font-extrabold outline-none focus:border-primary"
           />
           <button
             onClick={() => {
               abrirCaixa(Number(saldo.replace(",", ".")) || 0);
               toast.success("Caixa aberto");
             }}
-            className="mt-6 w-full rounded-3xl bg-primary py-7 text-2xl font-extrabold uppercase text-primary-foreground"
+            className="mt-6 w-full rounded-3xl bg-primary py-7 text-2xl font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
           >
             Abrir caixa
           </button>
@@ -153,7 +153,7 @@ function CaixaPage() {
           <div className="ml-auto flex gap-3">
             <button
               onClick={() => setMovForm("Entrada")}
-              className="rounded-2xl bg-success px-6 py-3 text-sm font-extrabold uppercase text-success-foreground"
+              className="rounded-2xl bg-accent px-6 py-3 text-sm font-extrabold uppercase text-accent-foreground transition-colors hover:bg-[#D95F2B]"
             >
               Entrada
             </button>
@@ -165,7 +165,7 @@ function CaixaPage() {
             </button>
             <button
               onClick={() => setFechando(true)}
-              className="rounded-2xl bg-primary px-6 py-3 text-sm font-extrabold uppercase text-primary-foreground"
+              className="rounded-2xl bg-primary px-6 py-3 text-sm font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
             >
               Fechar caixa
             </button>
@@ -180,7 +180,7 @@ function CaixaPage() {
               onChange={(e) => setMovValor(e.target.value)}
               placeholder={`Valor da ${movForm.toLowerCase()}`}
               inputMode="decimal"
-              className="w-64 rounded-2xl border-2 border-input bg-card px-5 py-3 text-2xl font-extrabold outline-none focus:border-accent"
+              className="w-64 rounded-2xl border-2 border-input bg-card px-5 py-3 text-2xl font-extrabold outline-none focus:border-primary"
             />
             <button
               onClick={() => {
@@ -196,11 +196,14 @@ function CaixaPage() {
                 setMovValor("");
                 setMovForm(null);
               }}
-              className="rounded-2xl bg-primary px-8 py-3 font-extrabold uppercase text-primary-foreground"
+              className="rounded-2xl bg-primary px-8 py-3 font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
             >
               Registrar
             </button>
-            <button onClick={() => setMovForm(null)} className="px-4 font-bold text-muted-foreground">
+            <button
+              onClick={() => setMovForm(null)}
+              className="px-4 font-bold text-muted-foreground"
+            >
               Cancelar
             </button>
           </div>
@@ -225,10 +228,16 @@ function CaixaPage() {
                 <td className="py-4">{m.pagamento}</td>
                 <td
                   className={`py-4 font-extrabold ${
-                    m.valor < 0 ? "text-destructive" : m.valor === 0 ? "text-muted-foreground" : "text-success"
+                    m.valor < 0
+                      ? "text-destructive"
+                      : m.valor === 0
+                        ? "text-muted-foreground"
+                        : "text-success"
                   }`}
                 >
-                  {m.valor === 0 ? "Crédito" : `${m.valor > 0 ? "+" : "-"} ${brl(Math.abs(m.valor))}`}
+                  {m.valor === 0
+                    ? "Crédito"
+                    : `${m.valor > 0 ? "+" : "-"} ${brl(Math.abs(m.valor))}`}
                 </td>
               </tr>
             ))}
@@ -252,7 +261,7 @@ function CaixaPage() {
               onChange={(e) => setContado(e.target.value)}
               placeholder="Valor contado R$"
               inputMode="decimal"
-              className="mt-5 w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-3xl font-extrabold outline-none focus:border-accent"
+              className="mt-5 w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-3xl font-extrabold outline-none focus:border-primary"
             />
             <p className="mt-3 text-lg font-extrabold">
               Diferença:{" "}
@@ -273,7 +282,7 @@ function CaixaPage() {
                   setFechando(false);
                   toast.success(`Caixa fechado por ${operador} — ${hoje()}`);
                 }}
-                className="flex-[2] rounded-2xl bg-primary py-5 font-extrabold uppercase text-primary-foreground"
+                className="flex-[2] rounded-2xl bg-primary py-5 font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
               >
                 Confirmar fechamento
               </button>
@@ -296,7 +305,9 @@ function Card({ rot, val, tone = "default" }: { rot: string; val: string; tone?:
           : "text-foreground";
   return (
     <div className="card-soft p-6">
-      <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">{rot}</p>
+      <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
+        {rot}
+      </p>
       <p className={`mt-1 text-4xl font-extrabold ${c}`}>{val}</p>
     </div>
   );
@@ -304,7 +315,7 @@ function Card({ rot, val, tone = "default" }: { rot: string; val: string; tone?:
 
 function Mini({ rot, val }: { rot: string; val: string }) {
   return (
-    <div className="rounded-2xl bg-muted p-4">
+    <div className="rounded-2xl border border-border bg-card p-4">
       <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{rot}</p>
       <p className="text-xl font-extrabold">{val}</p>
     </div>
