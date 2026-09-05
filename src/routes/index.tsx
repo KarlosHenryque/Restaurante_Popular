@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, CircleAlert, CreditCard, Loader2, QrCode, Search, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Banknote, Check, CircleAlert, CreditCard, Loader2, QrCode, Search, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { brl, maskCpf, useStore, type Cliente } from "@/lib/rp-store";
 
@@ -91,7 +91,8 @@ function Atendimento() {
 
   const bloqueado = !!cliente?.bloqueadoHoje;
   const credito = cliente?.credito ?? 0;
-  const valorDefinidoPelaConsulta = !!cliente && cliente.valorRegra > 0;
+  const valorFixoDoAtendimento = semCpf || (!!cliente && cliente.valorRegra > 0);
+  const valorPermitido = semCpf ? 7 : cliente?.valorRegra;
   const usaCredito = pagamento === "Crédito do cliente";
   const recebidoNum = Number(recebido.replace(",", ".")) || 0;
   const troco = Math.max(0, recebidoNum - valor);
@@ -179,8 +180,22 @@ function Atendimento() {
       )}
 
       {fase === "resultado" && (
-        <div className="grid grid-cols-[1.15fr_1fr] gap-6">
+        <div
+          className={semCpf ? "mx-auto flex max-w-2xl flex-col items-stretch gap-6" : "grid grid-cols-[1.15fr_1fr] gap-6"}
+        >
+          <div className={semCpf ? "" : "col-span-2"}>
+            <button
+              onClick={reset}
+              className="inline-flex items-center gap-2 rounded-2xl border-2 border-[#263B4D]/20 bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-[#263B4D] shadow-soft transition-colors hover:border-[#263B4D] hover:bg-[#EAF2F6]"
+            >
+              <ArrowLeft className="size-5" strokeWidth={2.4} />
+              Voltar
+            </button>
+          </div>
+
+
           {/* Cliente */}
+          {!semCpf && (
           <div className="space-y-6">
             <div className="card-soft border-l-8 border-l-primary p-8">
               <div className="flex items-start justify-between">
@@ -266,6 +281,7 @@ function Atendimento() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Valor + pagamento */}
           <div className="space-y-6">
@@ -280,10 +296,10 @@ function Atendimento() {
                       disabled={passo > etapa}
                       className={`rounded-xl border px-3 py-3 text-sm font-extrabold uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                         etapa === passo
-                          ? "border-[#263B4D] bg-[#263B4D] text-white shadow-soft"
+                          ? "border-accent bg-accent text-accent-foreground shadow-soft"
                           : passo < etapa
-                            ? "border-[#263B4D]/30 bg-[#DDEAF2] text-[#263B4D]"
-                            : "border-transparent bg-[#EAF2F6] text-[#4C6A80]"
+                            ? "border-accent bg-accent text-accent-foreground"
+                            : "border-accent/30 bg-accent/10 text-accent"
                       }`}
                     >
                       {nome}
@@ -298,7 +314,7 @@ function Atendimento() {
                 <p className="text-sm font-extrabold uppercase tracking-widest text-muted-foreground">
                   Valor da refeição
                 </p>
-                <p className="mt-2 text-[72px] font-black leading-none text-primary">
+                <p className="mt-2 text-[72px] font-black leading-none text-accent">
                   {brl(valor)}
                 </p>
                 <p className="mt-2 text-sm font-semibold text-muted-foreground">
@@ -312,7 +328,7 @@ function Atendimento() {
                 </p>
                 <div className="mt-6 grid grid-cols-3 gap-3">
                   {config.valores.map((v) => {
-                    const opcaoBloqueada = valorDefinidoPelaConsulta && v !== cliente.valorRegra;
+                    const opcaoBloqueada = valorFixoDoAtendimento && v !== valorPermitido;
                     return (
                       <label
                         key={v}
@@ -363,7 +379,9 @@ function Atendimento() {
                   Forma de pagamento
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
-                  {(["Dinheiro", "PIX", "Crédito do cliente"] as const).map((p) => {
+                  {(["Dinheiro", "PIX", "Crédito do cliente"] as const)
+                    .filter((p) => !(semCpf && p === "Crédito do cliente"))
+                    .map((p) => {
                     const bloq = p === "Crédito do cliente" && credito < valor;
                     const Icone = p === "Dinheiro" ? Banknote : p === "PIX" ? QrCode : CreditCard;
                     return (
@@ -373,7 +391,7 @@ function Atendimento() {
                         onClick={() => setPagamento(p)}
                         className={`flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-2xl border-2 px-4 py-6 text-lg font-extrabold uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                           pagamento === p
-                            ? "border-primary bg-primary text-primary-foreground"
+                            ? "border-accent bg-accent text-accent-foreground"
                             : "border-border bg-card hover:border-primary"
                         }`}
                       >
@@ -484,7 +502,12 @@ function Atendimento() {
                 <div className="mt-4 space-y-3 rounded-2xl bg-secondary p-5 text-lg font-semibold text-secondary-foreground">
                   <p className="flex justify-between gap-4"><span>Valor da refeição</span><b>{brl(valor)}</b></p>
                   <p className="flex justify-between gap-4"><span>Pagamento</span><b>{pagamento === "Crédito do cliente" ? "Crédito do cliente" : pagamento}</b></p>
-                  {pagamento === "Dinheiro" && <p className="flex justify-between gap-4"><span>Troco</span><b>{brl(troco)}</b></p>}
+                  {pagamento === "Dinheiro" && (
+                    <p className="flex justify-between gap-4">
+                      <span>{trocoEmCredito ? "Crédito gerado" : "Troco"}</span>
+                      <b>{brl(troco)}</b>
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={finalizar}
@@ -496,6 +519,13 @@ function Atendimento() {
               </div>
             )}
           </div>
+
+          {semCpf && (
+            <div className="rounded-2xl border-2 border-destructive bg-destructive/10 px-6 py-4 text-center text-destructive shadow-soft">
+              <p className="text-xl font-black uppercase tracking-wide">Cadastro sem CPF</p>
+              <p className="mt-1 text-sm font-bold">Atendimento de consumidor final com valor fixo de R$ 7,00.</p>
+            </div>
+          )}
         </div>
       )}
     </AppShell>
@@ -526,3 +556,16 @@ function Info({
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
