@@ -17,13 +17,13 @@ import { brl, maskCpf, useStore, type Cliente } from "@/lib/rp-store";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Atendimento — Restaurante Popular Cascavel" },
+      { title: "Atendimento | Restaurante Popular Cascavel" },
       {
         name: "description",
         content:
           "Consulte o CPF, valide o CadÚnico, defina o valor da refeição e finalize o atendimento em poucos segundos.",
       },
-      { property: "og:title", content: "Atendimento — Restaurante Popular Cascavel" },
+      { property: "og:title", content: "Atendimento | Restaurante Popular Cascavel" },
       {
         property: "og:description",
         content: "PDV de atendimento presencial dos Restaurantes Populares de Cascavel.",
@@ -52,6 +52,7 @@ function Atendimento() {
   const [recebido, setRecebido] = useState("");
   const [trocoEmCredito, setTrocoEmCredito] = useState(false);
   const [ok, setOk] = useState(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -76,6 +77,7 @@ function Atendimento() {
   const consultar = () => {
     if (cpf.replace(/\D/g, "").length !== 11) return;
     setFase("consultando");
+
     setTimeout(() => {
       const c = buscarCliente(cpf) ?? null;
       const semRede = !config.cadUnicoOnline || !!c?.somenteOffline;
@@ -106,6 +108,7 @@ function Atendimento() {
   const usaCredito = pagamento === "Crédito do cliente";
   const recebidoNum = Number(recebido.replace(",", ".")) || 0;
   const troco = Math.max(0, recebidoNum - valor);
+
   const podeFinalizar =
     !bloqueado &&
     valor > 0 &&
@@ -115,8 +118,9 @@ function Atendimento() {
 
   const finalizar = () => {
     if (!podeFinalizar) return;
+
     registrarAtendimento({
-      cpf: semCpf ? "—" : cpf,
+      cpf: semCpf ? " " : cpf,
       nome: cliente?.nome ?? "Atendimento sem CPF",
       unidade: config.unidade,
       operador,
@@ -137,6 +141,7 @@ function Atendimento() {
       creditoGerado: pagamento === "Dinheiro" && trocoEmCredito ? troco : 0,
       offline,
     });
+
     setOk(true);
     setTimeout(() => {
       setOk(false);
@@ -152,7 +157,7 @@ function Atendimento() {
             <Check className="mx-auto size-28" strokeWidth={3} />
             <p className="mt-4 text-4xl font-extrabold">ATENDIMENTO FINALIZADO</p>
             <p className="mt-2 text-xl opacity-90">
-              {brl(valor)} • {pagamento}
+              {brl(valor)} — {pagamento}
             </p>
           </div>
         </div>
@@ -185,8 +190,8 @@ function Atendimento() {
             Atendimento sem CPF
           </button>
           <p className="mt-10 text-sm text-muted-foreground">
-            Pressione <b>Enter</b> para consultar • CPFs de teste: 111.111.111-11 · 222.222.222-22 ·
-            333.333.333-33 · 444.444.444-44 · 555.555.555-55
+            Pressione <b>Enter</b> para consultar. <br /> CPFs de teste: 111.111.111-11 | 222.222.222-22 |
+            333.333.333-33 | 444.444.444-44 | 555.555.555-55
           </p>
         </div>
       )}
@@ -226,7 +231,7 @@ function Atendimento() {
                     <h2 className="text-4xl font-black uppercase tracking-tight">
                       {cliente?.nome ?? (semCpf ? "Atendimento sem CPF" : "Cliente não localizado")}
                     </h2>
-                    <p className="mt-1 text-lg text-muted-foreground">CPF: {semCpf ? "—" : cpf}</p>
+                    <p className="mt-1 text-lg text-muted-foreground">CPF: {semCpf ? " " : cpf}</p>
                   </div>
                 </div>
 
@@ -250,10 +255,10 @@ function Atendimento() {
 
                 {offline && (
                   <div className="mt-6 rounded-2xl bg-warning/25 p-5 text-warning-foreground">
-                    <p className="font-extrabold">⚠ Sem conexão com o CadÚnico</p>
+                    <p className="font-extrabold">⚠️ Sem conexão com o CadÚnico</p>
                     {cliente ? (
                       <p className="mt-1 text-sm">
-                        Dados armazenados localmente • Última consulta: {cliente.atualizacao}
+                        Dados armazenados localmente. Última consulta: {cliente.atualizacao}
                       </p>
                     ) : (
                       <p className="mt-1 text-sm">
@@ -347,14 +352,15 @@ function Atendimento() {
                         ? "Cadastro CadÚnico válido"
                         : "Sem benefício no CadÚnico"}
                 </p>
-                <div className="mt-6 grid grid-cols-3 gap-3">
+
+                <div className="mt-6 grid grid-cols-3 gap-4">
                   {config.valores.map((v) => {
                     const opcaoBloqueada = valorFixoDoAtendimento && v !== valorPermitido;
                     return (
                       <label
                         key={v}
                         aria-disabled={opcaoBloqueada}
-                        className={`rounded-2xl border-2 py-5 text-2xl font-extrabold transition-colors ${
+                        className={`flex h-24 items-center justify-center rounded-2xl border-2 text-3xl font-extrabold transition-colors ${
                           opcaoBloqueada
                             ? "cursor-not-allowed border-border bg-muted text-muted-foreground opacity-60"
                             : "cursor-pointer"
@@ -384,10 +390,11 @@ function Atendimento() {
                     );
                   })}
                 </div>
+
                 <button
                   onClick={() => setEtapa(2)}
                   disabled={!valor || bloqueado}
-                  className="mt-6 w-full rounded-2xl bg-primary py-5 text-xl font-extrabold uppercase text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                  className="mt-6 w-full rounded-2xl bg-primary py-5 text-xl font-extrabold uppercase text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                 >
                   Continuar para pagamento
                 </button>
@@ -405,6 +412,7 @@ function Atendimento() {
                     .map((p) => {
                       const bloq = p === "Crédito do cliente" && credito < valor;
                       const Icone = p === "Dinheiro" ? Banknote : p === "PIX" ? QrCode : CreditCard;
+
                       return (
                         <button
                           key={p}
@@ -431,7 +439,7 @@ function Atendimento() {
                 <button
                   onClick={() => setEtapa(3)}
                   disabled={!pagamento || bloqueado}
-                  className="mt-5 w-full rounded-2xl bg-primary py-5 text-xl font-extrabold uppercase text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                  className="mt-5 w-full rounded-2xl bg-primary py-5 text-xl font-extrabold uppercase text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                 >
                   Continuar para recebimento
                 </button>
@@ -481,6 +489,7 @@ function Atendimento() {
                         Troco {brl(troco)}
                       </span>
                     </div>
+
                     {troco > 0 && (
                       <div className="mt-4 grid grid-cols-2 gap-3">
                         <button
@@ -512,7 +521,7 @@ function Atendimento() {
                 <button
                   onClick={() => setEtapa(4)}
                   disabled={!podeFinalizar}
-                  className="mt-5 w-full rounded-2xl bg-primary py-5 text-xl font-extrabold uppercase text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                  className="mt-5 w-full rounded-2xl bg-primary py-5 text-xl font-extrabold uppercase text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                 >
                   Conferir atendimento
                 </button>
@@ -540,6 +549,7 @@ function Atendimento() {
                     </p>
                   )}
                 </div>
+
                 <button
                   onClick={finalizar}
                   disabled={!podeFinalizar}
@@ -582,6 +592,7 @@ function Info({
         : tone === "muted"
           ? "text-muted-foreground"
           : "text-foreground";
+
   return (
     <div>
       <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{rot}</p>

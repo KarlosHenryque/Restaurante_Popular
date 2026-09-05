@@ -11,6 +11,7 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -38,7 +39,9 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-border: var(--sidebar-border);
+
   --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+
   --shadow-soft: 0 1px 2px rgb(32 55 71 / 5%), 0 12px 30px rgb(32 55 71 / 10%);
 }
 
@@ -56,8 +59,11 @@
   --secondary-foreground: #176a45;
   --muted: #f5efe7;
   --muted-foreground: #667580;
-  --accent: #f0783e;
+  
+  /* Tudo padronizado nos tons de verde */
+  --accent: #238a5a; 
   --accent-foreground: #ffffff;
+  
   --warning: #f2b84b;
   --warning-foreground: #203747;
   --success: #24945e;
@@ -102,8 +108,9 @@
 
   button.bg-accent:not(:disabled):hover,
   a.bg-accent:hover {
-    background-color: #d95f2b;
+    background-color: #176a45; 
   }
+<<<<<<< HEAD
 }
 
 @media print {
@@ -132,3 +139,6 @@
     display: none;
   }
 }
+=======
+}
+>>>>>>> origin/main
