@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { ArrowLeft, Check, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { brl, hoje, useStore } from "@/lib/rp-store";
+import { agora, brl, hoje, useStore } from "@/lib/rp-store";
 
 export const Route = createFileRoute("/caixa")({
   head: () => ({
@@ -23,17 +24,15 @@ export const Route = createFileRoute("/caixa")({
   component: CaixaPage,
 });
 
-const filtros = ["Todos", "Refeições", "Créditos", "Entradas", "Saídas"] as const;
-
 function CaixaPage() {
   const { caixa, movimentos, atendimentos, abrirCaixa, fecharCaixa, addMovimento, operador } =
     useStore();
   const [saldo, setSaldo] = useState("");
-  const [filtro, setFiltro] = useState<(typeof filtros)[number]>("Todos");
   const [contado, setContado] = useState("");
   const [fechando, setFechando] = useState(false);
-  const [movForm, setMovForm] = useState<"Entrada" | "Sangria" | null>(null);
+  const [movForm, setMovForm] = useState<"Entrada" | "Saída" | null>(null);
   const [movValor, setMovValor] = useState("");
+  const [movObs, setMovObs] = useState("");
 
   const doDia = movimentos.filter((m) => m.data === hoje());
   const entradas = doDia.filter((m) => m.valor > 0).reduce((s, m) => s + m.valor, 0);
@@ -59,20 +58,9 @@ function CaixaPage() {
     };
   }, [atendimentos, doDia]);
 
-  const listaFiltrada = doDia.filter((m) =>
-    filtro === "Todos"
-      ? true
-      : filtro === "Refeições"
-        ? m.tipo === "Refeição"
-        : filtro === "Créditos"
-          ? m.tipo === "Crédito adicionado"
-          : filtro === "Entradas"
-            ? m.valor > 0
-            : m.valor < 0,
-  );
-
   const dinheiroEsperado = caixa.saldoInicial + resumo.dinheiro - saidas;
   const diferenca = (Number(contado.replace(",", ".")) || 0) - dinheiroEsperado;
+  const contadoNum = Number(contado.replace(",", ".")) || 0;
 
   if (!caixa.aberto) {
     return (
@@ -102,13 +90,253 @@ function CaixaPage() {
     );
   }
 
+  if (fechando) {
+    return (
+      <AppShell title="Fechamento do caixa">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="screen-only flex flex-wrap items-center justify-between gap-3">
+            <button
+              onClick={() => setFechando(false)}
+              className="inline-flex items-center gap-2 rounded-2xl border-2 border-border bg-card px-5 py-3 text-sm font-extrabold uppercase tracking-wide text-foreground shadow-soft transition-colors hover:border-primary hover:bg-secondary"
+            >
+              <ArrowLeft className="size-5" strokeWidth={2.4} />
+              Cancelar
+            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 rounded-2xl bg-accent px-6 py-3 text-sm font-extrabold uppercase tracking-wide text-accent-foreground shadow-soft"
+              >
+                <Printer className="size-5" />
+                Imprimir
+              </button>
+              <button
+                onClick={() => {
+                  fecharCaixa();
+                  setFechando(false);
+                  toast.success(`Caixa fechado por ${operador} — ${hoje()}`);
+                }}
+                className="inline-flex items-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-extrabold uppercase tracking-wide text-primary-foreground shadow-soft"
+              >
+                <Check className="size-5" />
+                Confirmar
+              </button>
+            </div>
+          </div>
+
+          <section className="print-sheet card-soft overflow-hidden p-0">
+            <div className="border-b border-border bg-primary px-8 py-6 text-white">
+              <div className="flex flex-wrap items-start justify-between gap-5">
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-widest opacity-75">
+                    Restaurante Popular
+                  </p>
+                  <h2 className="mt-1 text-3xl font-black uppercase">
+                    Extrato de fechamento do caixa
+                  </h2>
+                  <p className="mt-2 text-sm font-semibold opacity-80">
+                    Data {hoje()} • Operador {operador} • Emissão {agora()}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/10 px-5 py-3 text-right">
+                  <p className="text-xs font-extrabold uppercase tracking-widest opacity-75">
+                    Status
+                  </p>
+                  <p className="text-xl font-black">
+                    {diferenca === 0 ? "Conferido" : "Com diferença"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8">
+              <div className="grid gap-4 md:grid-cols-4">
+                <Mini rot="Saldo inicial" val={brl(caixa.saldoInicial)} />
+                <Mini rot="Entradas" val={brl(entradas)} />
+                <Mini rot="Saídas" val={brl(saidas)} />
+                <Mini rot="Dinheiro esperado" val={brl(dinheiroEsperado)} />
+              </div>
+
+              <div className="mt-6 grid gap-5 rounded-2xl border border-border bg-muted p-5 md:grid-cols-2">
+                <div className="rounded-2xl border-2 border-input bg-card p-4">
+                  <label className="screen-only text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
+                    Valor contado no malote
+                  </label>
+                  <input
+                    autoFocus
+                    value={contado}
+                    onChange={(e) => setContado(e.target.value)}
+                    placeholder="Valor contado R$"
+                    inputMode="decimal"
+                    className="screen-only mt-1 h-[52px] w-full rounded-xl border-0 bg-transparent p-0 text-3xl font-black outline-none placeholder:text-muted-foreground/50"
+                  />
+                  <div className="hidden print:block">
+                    <Linha k="Valor contado no malote" v={brl(contadoNum)} />
+                  </div>
+                </div>
+                <div
+                  className={`rounded-2xl border-2 bg-card p-4 ${
+                    diferenca === 0
+                      ? "border-success text-success"
+                      : "border-destructive text-destructive"
+                  }`}
+                >
+                  <p className="text-xs font-extrabold uppercase tracking-widest opacity-70">
+                    Diferença
+                  </p>
+                  <p className="mt-1 flex h-[52px] items-center text-3xl font-black">
+                    {brl(diferenca)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <Mini rot="Refeições" val={String(resumo.total)} />
+                <Mini rot="PIX" val={brl(resumo.pix)} />
+                <Mini rot="Créditos vendidos" val={brl(resumo.credVendido)} />
+              </div>
+
+              <div className="mt-6 overflow-hidden rounded-2xl border border-border">
+                <div className="grid grid-cols-[90px_1fr_150px] bg-muted px-5 py-3 text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
+                  <span>Hora</span>
+                  <span>Descrição</span>
+                  <span className="text-right">Valor</span>
+                </div>
+                <div className="divide-y divide-border bg-card">
+                  {doDia.map((m) => (
+                    <div
+                      key={m.id}
+                      className="grid grid-cols-[90px_1fr_150px] items-center px-5 py-3 text-sm"
+                    >
+                      <span className="font-bold text-muted-foreground">{m.hora}</span>
+                      <div>
+                        <p className="font-black text-foreground">{m.tipo}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                          {m.pagamento}
+                          {m.observacao ? ` • ${m.observacao}` : ""}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-right text-lg font-black ${
+                          m.valor < 0
+                            ? "text-destructive"
+                            : m.valor === 0
+                              ? "text-muted-foreground"
+                              : "text-success"
+                        }`}
+                      >
+                        {m.valor === 0
+                          ? "Crédito"
+                          : `${m.valor > 0 ? "+" : "-"} ${brl(Math.abs(m.valor))}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-10 grid grid-cols-1 gap-8 text-center text-sm font-bold print:grid-cols-2">
+                <div className="border-t border-foreground pt-2">Operador do caixa</div>
+                <div className="border-t border-foreground pt-2">Responsável pelo malote</div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell title="Caixa">
-      <div className="grid grid-cols-4 gap-5">
-        <Card rot="Saldo inicial" val={brl(caixa.saldoInicial)} />
-        <Card rot="Entradas" val={brl(entradas)} tone="success" />
-        <Card rot="Saídas" val={brl(saidas)} tone="destructive" />
-        <Card rot="Saldo esperado" val={brl(esperado)} tone="primary" />
+    <AppShell title="Caixa" hideSidebar={!!movForm}>
+      <div className="card-soft border-l-8 border-l-primary p-8">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
+              Conferência do caixa
+            </p>
+            <h2 className="mt-1 text-4xl font-black uppercase">Resumo do dia</h2>
+            <p className="mt-1 text-sm font-bold text-muted-foreground">
+              Operador {operador} • Caixa aberto às {caixa.abertoEm ?? "—"}
+            </p>
+          </div>
+          <div className="grid min-w-[320px] grid-cols-2 gap-3">
+            <button
+              onClick={() => setMovForm("Entrada")}
+              className="rounded-2xl bg-accent px-5 py-4 text-sm font-extrabold uppercase text-accent-foreground transition-colors hover:bg-[#D95F2B]"
+            >
+              Entrada
+            </button>
+            <button
+              onClick={() => setMovForm("Saída")}
+              className="rounded-2xl bg-warning px-5 py-4 text-sm font-extrabold uppercase text-warning-foreground"
+            >
+              Saída
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-7 grid grid-cols-4 gap-5">
+          <Card rot="Saldo inicial" val={brl(caixa.saldoInicial)} />
+          <Card rot="Entradas" val={brl(entradas)} tone="success" />
+          <Card rot="Saídas" val={brl(saidas)} tone="destructive" />
+          <Card rot="Saldo esperado" val={brl(esperado)} tone="primary" />
+        </div>
+
+        <button
+          onClick={() => setFechando(true)}
+          className="mt-6 w-full rounded-2xl bg-primary px-6 py-6 text-xl font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
+        >
+          Fechamento de caixa
+        </button>
+
+        {movForm && (
+          <div className="mt-5 grid gap-3 rounded-2xl bg-muted p-5 lg:grid-cols-[220px_1fr_auto_auto]">
+            <input
+              autoFocus
+              value={movValor}
+              onChange={(e) => setMovValor(e.target.value)}
+              placeholder={`Valor da ${movForm.toLowerCase()}`}
+              inputMode="decimal"
+              className="rounded-2xl border-2 border-input bg-card px-5 py-3 text-2xl font-extrabold outline-none focus:border-primary"
+            />
+            <input
+              value={movObs}
+              onChange={(e) => setMovObs(e.target.value)}
+              placeholder="Motivo da movimentação"
+              className="rounded-2xl border-2 border-input bg-card px-5 py-3 text-lg font-bold outline-none focus:border-primary"
+            />
+            <button
+              onClick={() => {
+                const v = Number(movValor.replace(",", ".")) || 0;
+                if (v <= 0 || !movObs.trim()) return;
+                addMovimento({
+                  tipo: movForm === "Saída" ? "Sangria" : "Entrada",
+                  cliente: "—",
+                  pagamento: "Dinheiro",
+                  valor: movForm === "Saída" ? -v : v,
+                  observacao: movObs.trim(),
+                });
+                toast.success(`${movForm} de ${brl(v)} registrada`);
+                setMovValor("");
+                setMovObs("");
+                setMovForm(null);
+              }}
+              disabled={Number(movValor.replace(",", ".")) <= 0 || !movObs.trim()}
+              className="rounded-2xl bg-primary px-8 py-3 font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+            >
+              Registrar
+            </button>
+            <button
+              onClick={() => {
+                setMovForm(null);
+                setMovValor("");
+                setMovObs("");
+              }}
+              className="px-4 font-bold text-muted-foreground"
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-5">
@@ -136,160 +364,6 @@ function CaixaPage() {
           </div>
         </div>
       </div>
-
-      <div className="card-soft mt-6 p-7">
-        <div className="flex flex-wrap items-center gap-3">
-          {filtros.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFiltro(f)}
-              className={`rounded-full px-5 py-2.5 text-sm font-extrabold uppercase ${
-                filtro === f ? "bg-primary text-primary-foreground" : "bg-muted"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-          <div className="ml-auto flex gap-3">
-            <button
-              onClick={() => setMovForm("Entrada")}
-              className="rounded-2xl bg-accent px-6 py-3 text-sm font-extrabold uppercase text-accent-foreground transition-colors hover:bg-[#D95F2B]"
-            >
-              Entrada
-            </button>
-            <button
-              onClick={() => setMovForm("Sangria")}
-              className="rounded-2xl bg-warning px-6 py-3 text-sm font-extrabold uppercase text-warning-foreground"
-            >
-              Sangria / Saída
-            </button>
-            <button
-              onClick={() => setFechando(true)}
-              className="rounded-2xl bg-primary px-6 py-3 text-sm font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
-            >
-              Fechar caixa
-            </button>
-          </div>
-        </div>
-
-        {movForm && (
-          <div className="mt-5 flex items-center gap-3 rounded-2xl bg-muted p-5">
-            <input
-              autoFocus
-              value={movValor}
-              onChange={(e) => setMovValor(e.target.value)}
-              placeholder={`Valor da ${movForm.toLowerCase()}`}
-              inputMode="decimal"
-              className="w-64 rounded-2xl border-2 border-input bg-card px-5 py-3 text-2xl font-extrabold outline-none focus:border-primary"
-            />
-            <button
-              onClick={() => {
-                const v = Number(movValor.replace(",", ".")) || 0;
-                if (v <= 0) return;
-                addMovimento({
-                  tipo: movForm,
-                  cliente: "—",
-                  pagamento: "Dinheiro",
-                  valor: movForm === "Sangria" ? -v : v,
-                });
-                toast.success(`${movForm} de ${brl(v)} registrada`);
-                setMovValor("");
-                setMovForm(null);
-              }}
-              className="rounded-2xl bg-primary px-8 py-3 font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
-            >
-              Registrar
-            </button>
-            <button
-              onClick={() => setMovForm(null)}
-              className="px-4 font-bold text-muted-foreground"
-            >
-              Cancelar
-            </button>
-          </div>
-        )}
-
-        <table className="mt-5 w-full text-left">
-          <thead className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
-            <tr>
-              {["Hora", "Movimento", "Cliente", "Pagamento", "Valor"].map((h) => (
-                <th key={h} className="py-3">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {listaFiltrada.map((m) => (
-              <tr key={m.id} className="border-t border-border text-lg font-semibold">
-                <td className="py-4">{m.hora}</td>
-                <td className="py-4 font-extrabold">{m.tipo}</td>
-                <td className="py-4">{m.cliente}</td>
-                <td className="py-4">{m.pagamento}</td>
-                <td
-                  className={`py-4 font-extrabold ${
-                    m.valor < 0
-                      ? "text-destructive"
-                      : m.valor === 0
-                        ? "text-muted-foreground"
-                        : "text-success"
-                  }`}
-                >
-                  {m.valor === 0
-                    ? "Crédito"
-                    : `${m.valor > 0 ? "+" : "-"} ${brl(Math.abs(m.valor))}`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {fechando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-6">
-          <div className="card-soft w-[520px] p-8">
-            <h2 className="text-2xl font-extrabold">Resumo do caixa</h2>
-            <dl className="mt-5 space-y-3 text-lg font-semibold">
-              <Linha k="Saldo inicial" v={brl(caixa.saldoInicial)} />
-              <Linha k="Entradas" v={brl(entradas)} />
-              <Linha k="Saídas" v={brl(saidas)} />
-              <Linha k="Saldo esperado em dinheiro" v={brl(dinheiroEsperado)} />
-            </dl>
-            <input
-              autoFocus
-              value={contado}
-              onChange={(e) => setContado(e.target.value)}
-              placeholder="Valor contado R$"
-              inputMode="decimal"
-              className="mt-5 w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-3xl font-extrabold outline-none focus:border-primary"
-            />
-            <p className="mt-3 text-lg font-extrabold">
-              Diferença:{" "}
-              <span className={diferenca === 0 ? "text-success" : "text-destructive"}>
-                {brl(diferenca)}
-              </span>
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setFechando(false)}
-                className="flex-1 rounded-2xl bg-muted py-5 font-extrabold uppercase"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => {
-                  fecharCaixa();
-                  setFechando(false);
-                  toast.success(`Caixa fechado por ${operador} — ${hoje()}`);
-                }}
-                className="flex-[2] rounded-2xl bg-primary py-5 font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
-              >
-                Confirmar fechamento
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AppShell>
   );
 }

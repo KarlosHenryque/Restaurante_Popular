@@ -52,6 +52,7 @@ export type Movimento = {
   cliente: string;
   pagamento: string;
   valor: number;
+  observacao?: string;
 };
 
 export type Config = {
@@ -82,13 +83,10 @@ type State = {
 export const hoje = () => new Date().toLocaleDateString("pt-BR");
 export const agora = () =>
   new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-export const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 export const maskData = (v: string) => {
   const d = v.replace(/\D/g, "").slice(0, 8);
-  return d
-    .replace(/^(\d{2})(\d)/, "$1/$2")
-    .replace(/^(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+  return d.replace(/^(\d{2})(\d)/, "$1/$2").replace(/^(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
 };
 export const maskCpf = (v: string) => {
   const d = v.replace(/\D/g, "").slice(0, 11);
@@ -102,8 +100,8 @@ const clientesIniciais: Cliente[] = [
   {
     cpf: "111.111.111-11",
     nome: "Maria da Silva",
-        dataNascimento: "12/03/1984",
-cadUnico: "ativo",
+    dataNascimento: "12/03/1984",
+    cadUnico: "ativo",
     renda: 900,
     atualizacao: "15/08/2026",
     credito: 10,
@@ -114,8 +112,8 @@ cadUnico: "ativo",
   {
     cpf: "222.222.222-22",
     nome: "João Pereira",
-        dataNascimento: "28/11/1976",
-cadUnico: "ativo",
+    dataNascimento: "28/11/1976",
+    cadUnico: "ativo",
     renda: 1900,
     atualizacao: "02/07/2026",
     credito: 0,
@@ -126,8 +124,8 @@ cadUnico: "ativo",
   {
     cpf: "333.333.333-33",
     nome: "Carlos Souza",
-        dataNascimento: "05/06/1991",
-cadUnico: "sem",
+    dataNascimento: "05/06/1991",
+    cadUnico: "sem",
     renda: 4200,
     atualizacao: "—",
     credito: 0,
@@ -138,8 +136,8 @@ cadUnico: "sem",
   {
     cpf: "444.444.444-44",
     nome: "Ana Oliveira",
-        dataNascimento: "19/09/1968",
-cadUnico: "ativo",
+    dataNascimento: "19/09/1968",
+    cadUnico: "ativo",
     renda: 780,
     atualizacao: "21/08/2026",
     credito: 5,
@@ -152,7 +150,7 @@ cadUnico: "ativo",
     cpf: "555.555.555-55",
     nome: "Fernanda Lima",
     dataNascimento: "31/01/1989",
-cadUnico: "ativo",
+    cadUnico: "ativo",
     renda: 1100,
     atualizacao: "03/09/2026",
     credito: 0,
@@ -164,31 +162,107 @@ cadUnico: "ativo",
 ];
 
 const movimentosIniciais: Movimento[] = [
-  { id: "m1", data: hoje(), hora: "11:02", tipo: "Refeição", cliente: "João Silva", pagamento: "Dinheiro", valor: 1 },
-  { id: "m2", data: hoje(), hora: "11:04", tipo: "Refeição", cliente: "Maria Souza", pagamento: "Crédito", valor: 0 },
-  { id: "m3", data: hoje(), hora: "11:10", tipo: "Crédito adicionado", cliente: "Carlos Lima", pagamento: "PIX", valor: 20 },
-  { id: "m4", data: hoje(), hora: "11:28", tipo: "Refeição", cliente: "Rita Alves", pagamento: "Cartão", valor: 7 },
-  { id: "m5", data: hoje(), hora: "12:15", tipo: "Sangria", cliente: "—", pagamento: "Dinheiro", valor: -200 },
+  {
+    id: "m1",
+    data: hoje(),
+    hora: "11:02",
+    tipo: "Refeição",
+    cliente: "João Silva",
+    pagamento: "Dinheiro",
+    valor: 1,
+  },
+  {
+    id: "m2",
+    data: hoje(),
+    hora: "11:04",
+    tipo: "Refeição",
+    cliente: "Maria Souza",
+    pagamento: "Crédito",
+    valor: 0,
+  },
+  {
+    id: "m3",
+    data: hoje(),
+    hora: "11:10",
+    tipo: "Crédito adicionado",
+    cliente: "Carlos Lima",
+    pagamento: "PIX",
+    valor: 20,
+  },
+  {
+    id: "m4",
+    data: hoje(),
+    hora: "11:28",
+    tipo: "Refeição",
+    cliente: "Rita Alves",
+    pagamento: "Cartão",
+    valor: 7,
+  },
+  {
+    id: "m5",
+    data: hoje(),
+    hora: "12:15",
+    tipo: "Sangria",
+    cliente: "—",
+    pagamento: "Dinheiro",
+    valor: -200,
+  },
 ];
 
 const atendimentosIniciais: Atendimento[] = [
   {
-    id: "a1", data: hoje(), hora: "11:02", cpf: "222.222.222-22", nome: "João Pereira",
-unidade: "Cascavel", operador: "Karlos Henryque", valor: 1, valorRegra: 1,
-    alteracaoManual: false, pagamento: "Dinheiro", cadUnico: "Ativo", creditoUsado: 0,
-    creditoGerado: 0, offline: false, status: "Concluído",
+    id: "a1",
+    data: hoje(),
+    hora: "11:02",
+    cpf: "222.222.222-22",
+    nome: "João Pereira",
+    unidade: "Cascavel",
+    operador: "Karlos Henryque",
+    valor: 1,
+    valorRegra: 1,
+    alteracaoManual: false,
+    pagamento: "Dinheiro",
+    cadUnico: "Ativo",
+    creditoUsado: 0,
+    creditoGerado: 0,
+    offline: false,
+    status: "Concluído",
   },
   {
-    id: "a2", data: hoje(), hora: "11:35", cpf: "444.444.444-44", nome: "Ana Oliveira",
-unidade: "Centro", operador: "Karlos Henryque", valor: 1, valorRegra: 1,
-    alteracaoManual: false, pagamento: "Crédito", cadUnico: "Ativo", creditoUsado: 1,
-    creditoGerado: 0, offline: false, status: "Concluído",
+    id: "a2",
+    data: hoje(),
+    hora: "11:35",
+    cpf: "444.444.444-44",
+    nome: "Ana Oliveira",
+    unidade: "Centro",
+    operador: "Karlos Henryque",
+    valor: 1,
+    valorRegra: 1,
+    alteracaoManual: false,
+    pagamento: "Crédito",
+    cadUnico: "Ativo",
+    creditoUsado: 1,
+    creditoGerado: 0,
+    offline: false,
+    status: "Concluído",
   },
   {
-    id: "a3", data: "04/09/2026", hora: "12:20", cpf: "333.333.333-33", nome: "Carlos Souza",
-unidade: "Cascavel", operador: "Simone Reis", valor: 7, valorRegra: 7,
-    alteracaoManual: false, pagamento: "PIX", cadUnico: "Sem benefício", creditoUsado: 0,
-    creditoGerado: 0, offline: false, status: "Concluído",
+    id: "a3",
+    data: "04/09/2026",
+    hora: "12:20",
+    cpf: "333.333.333-33",
+    nome: "Carlos Souza",
+    unidade: "Cascavel",
+    operador: "Simone Reis",
+    valor: 7,
+    valorRegra: 7,
+    alteracaoManual: false,
+    pagamento: "PIX",
+    cadUnico: "Sem benefício",
+    creditoUsado: 0,
+    creditoGerado: 0,
+    offline: false,
+    status: "Concluído",
   },
 ];
 
@@ -251,16 +325,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addMovimento: Ctx["addMovimento"] = useCallback((m) => {
     setState((s) => ({
       ...s,
-      movimentos: [
-        { ...m, id: crypto.randomUUID(), data: hoje(), hora: agora() },
-        ...s.movimentos,
-      ],
+      movimentos: [{ ...m, id: crypto.randomUUID(), data: hoje(), hora: agora() }, ...s.movimentos],
     }));
   }, []);
 
   const registrarAtendimento: Ctx["registrarAtendimento"] = useCallback((a) => {
     setState((s) => {
-      const at: Atendimento = { ...a, id: crypto.randomUUID(), data: hoje(), hora: agora(), status: "Concluído" };
+      const at: Atendimento = {
+        ...a,
+        id: crypto.randomUUID(),
+        data: hoje(),
+        hora: agora(),
+        status: "Concluído",
+      };
       const mov: Movimento = {
         id: crypto.randomUUID(),
         data: at.data,
@@ -338,7 +415,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addMovimento,
       toggleCadUnico,
     }),
-    [state, buscarCliente, registrarAtendimento, adicionarCredito, abrirCaixa, fecharCaixa, addMovimento, toggleCadUnico],
+    [
+      state,
+      buscarCliente,
+      registrarAtendimento,
+      adicionarCredito,
+      abrirCaixa,
+      fecharCaixa,
+      addMovimento,
+      toggleCadUnico,
+    ],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -349,9 +435,3 @@ export function useStore() {
   if (!ctx) throw new Error("useStore precisa estar dentro de StoreProvider");
   return ctx;
 }
-
-
-
-
-
-
