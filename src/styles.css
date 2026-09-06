@@ -59,11 +59,8 @@
   --secondary-foreground: #176a45;
   --muted: #f5efe7;
   --muted-foreground: #667580;
-  
-  /* Tudo padronizado nos tons de verde */
-  --accent: #238a5a; 
+  --accent: #238a5a;
   --accent-foreground: #ffffff;
-  
   --warning: #f2b84b;
   --warning-foreground: #203747;
   --success: #24945e;
@@ -108,9 +105,8 @@
 
   button.bg-accent:not(:disabled):hover,
   a.bg-accent:hover {
-    background-color: #176a45; 
+    background-color: #d95f2b;
   }
-<<<<<<< HEAD
 }
 
 @media print {
@@ -139,6 +135,3 @@
     display: none;
   }
 }
-=======
-}
->>>>>>> origin/main

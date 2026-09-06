@@ -4,13 +4,14 @@ import {
   ArrowLeft,
   Banknote,
   Check,
-  CircleAlert,
   CreditCard,
   Loader2,
   QrCode,
   Search,
   ShieldCheck,
+  XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { brl, maskCpf, useStore, type Cliente } from "@/lib/rp-store";
 
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Consulte o CPF, valide o CadÚnico, defina o valor da refeição e finalize o atendimento em poucos segundos.",
+          "Consulte o CPF, valide o CadÚnico, defina o valor da refeição e finalize o atendimento com agilidade.",
       },
       { property: "og:title", content: "Atendimento | Restaurante Popular Cascavel" },
       {
@@ -33,9 +34,24 @@ export const Route = createFileRoute("/")({
   component: Atendimento,
 });
 
-type Fase = "inicio" | "consultando" | "resultado";
+type Fase = "inicio" | "consultando" | "bloqueado_alerta" | "resultado";
 type Etapa = 1 | 2 | 3 | 4;
 type Pagamento = "Dinheiro" | "PIX" | "Crédito do cliente" | "";
+
+function validarDigitosCpf(cpfLimpo: string): boolean {
+  if (cpfLimpo.length !== 11 || /^(\d)\1{10}$/.test(cpfLimpo)) return false;
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += Number(cpfLimpo[i]) * (10 - i);
+  let resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== Number(cpfLimpo[9])) return false;
+
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += Number(cpfLimpo[i]) * (11 - i);
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  return resto === Number(cpfLimpo[10]);
+}
 
 function Atendimento() {
   const { config, buscarCliente, registrarAtendimento, operador } = useStore();
@@ -75,11 +91,36 @@ function Atendimento() {
   };
 
   const consultar = () => {
-    if (cpf.replace(/\D/g, "").length !== 11) return;
+    const digitos = cpf.replace(/\D/g, "");
+    if (digitos.length !== 11) {
+      toast.error("Informe um CPF completo com 11 dígitos.");
+      return;
+    }
+
+    const cpfsTestePermitidos = [
+      "11111111111",
+      "22222222222",
+      "33333333333",
+      "44444444444",
+      "55555555555",
+    ];
+
+    if (!validarDigitosCpf(digitos) && !cpfsTestePermitidos.includes(digitos)) {
+      toast.error("Dígitos verificadores do CPF inválidos.");
+      return;
+    }
+
     setFase("consultando");
 
     setTimeout(() => {
       const c = buscarCliente(cpf) ?? null;
+
+      if (c?.bloqueadoHoje) {
+        setCliente(c);
+        setFase("bloqueado_alerta");
+        return;
+      }
+
       const semRede = !config.cadUnicoOnline || !!c?.somenteOffline;
       setCliente(c);
       setOffline(semRede);
@@ -88,7 +129,7 @@ function Atendimento() {
       setManual(false);
       setEtapa(1);
       setFase("resultado");
-    }, 1100);
+    }, 900);
   };
 
   const atenderSemCpf = () => {
@@ -101,20 +142,20 @@ function Atendimento() {
     setFase("resultado");
   };
 
-  const bloqueado = !!cliente?.bloqueadoHoje;
-  const credito = cliente?.credito ?? 0;
+  const creditoAtual = cliente?.credito ?? 0;
+  const totalACobrar = valor;
+
   const valorFixoDoAtendimento = semCpf || (!!cliente && cliente.valorRegra > 0);
   const valorPermitido = semCpf ? 7 : cliente?.valorRegra;
   const usaCredito = pagamento === "Crédito do cliente";
   const recebidoNum = Number(recebido.replace(",", ".")) || 0;
-  const troco = Math.max(0, recebidoNum - valor);
+  const troco = Math.max(0, recebidoNum - totalACobrar);
 
   const podeFinalizar =
-    !bloqueado &&
     valor > 0 &&
     pagamento !== "" &&
-    (!usaCredito || credito >= valor) &&
-    (pagamento !== "Dinheiro" || recebidoNum >= valor);
+    (!usaCredito || creditoAtual >= valor) &&
+    (pagamento !== "Dinheiro" || recebidoNum >= totalACobrar);
 
   const finalizar = () => {
     if (!podeFinalizar) return;
@@ -157,7 +198,7 @@ function Atendimento() {
             <Check className="mx-auto size-28" strokeWidth={3} />
             <p className="mt-4 text-4xl font-extrabold">ATENDIMENTO FINALIZADO</p>
             <p className="mt-2 text-xl opacity-90">
-              {brl(valor)} — {pagamento}
+              Total Pago: {brl(totalACobrar)} — {pagamento}
             </p>
           </div>
         </div>
@@ -171,6 +212,7 @@ function Atendimento() {
           <input
             ref={inputRef}
             value={cpf}
+            maxLength={14}
             onChange={(e) => setCpf(maskCpf(e.target.value))}
             onKeyDown={(e) => e.key === "Enter" && consultar()}
             placeholder="000.000.000-00"
@@ -190,17 +232,54 @@ function Atendimento() {
             Atendimento sem CPF
           </button>
           <p className="mt-10 text-sm text-muted-foreground">
-            Pressione <b>Enter</b> para consultar. <br /> CPFs de teste: 111.111.111-11 | 222.222.222-22 |
-            333.333.333-33 | 444.444.444-44 | 555.555.555-55
+            Pressione <b>Enter</b> para consultar. <br /> CPFs de teste: 111.111.111-11 |
+            222.222.222-22 | 333.333.333-33 | 444.444.444-44 (bloqueado) | 555.555.555-55
           </p>
         </div>
       )}
 
       {fase === "consultando" && (
         <div className="flex flex-col items-center pt-40 text-center">
-          <Loader2 className="size-16 animate-spin text-accent" />
+          <Loader2 className="size-16 animate-spin text-primary" />
           <p className="mt-6 text-3xl font-extrabold">Consultando CadÚnico...</p>
           <p className="mt-2 text-lg text-muted-foreground">{cpf}</p>
+        </div>
+      )}
+
+      {fase === "bloqueado_alerta" && cliente && (
+        <div className="mx-auto max-w-2xl space-y-6 pt-10 text-center">
+          <div className="card-soft border-2 border-destructive bg-destructive/5 p-10">
+            <XCircle className="mx-auto size-20 text-destructive" />
+            <h2 className="mt-4 text-3xl font-black uppercase text-destructive">
+              Refeição Já Utilizada Hoje
+            </h2>
+            <p className="mt-2 text-xl font-bold">{cliente.nome}</p>
+            <p className="text-muted-foreground">CPF: {cliente.cpf}</p>
+
+            <div className="mt-6 rounded-2xl bg-card p-6 shadow-sm">
+              <p className="text-sm font-extrabold uppercase tracking-widest text-muted-foreground">
+                Atendimento Registrado Anteriormente
+              </p>
+              <p className="mt-2 text-lg font-semibold">
+                Unidade: <b>{cliente.bloqueadoHoje?.unidade}</b>
+              </p>
+              <p className="text-lg font-semibold">
+                Horário: <b>{cliente.bloqueadoHoje?.hora}</b>
+              </p>
+            </div>
+
+            <p className="mt-6 text-sm font-semibold text-muted-foreground">
+              A política de subsídio social municipal autoriza apenas uma refeição subsidiada por
+              CPF ao dia.
+            </p>
+
+            <button
+              onClick={reset}
+              className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-primary px-8 py-4 text-base font-extrabold uppercase text-primary-foreground transition-colors hover:bg-[#176A45]"
+            >
+              <ArrowLeft className="size-5" /> Voltar ao Início
+            </button>
+          </div>
         </div>
       )}
 
@@ -222,7 +301,6 @@ function Atendimento() {
             </button>
           </div>
 
-          {/* Cliente */}
           {!semCpf && (
             <div className="space-y-6">
               <div className="card-soft border-l-8 border-l-primary p-8">
@@ -279,37 +357,18 @@ function Atendimento() {
                 )}
               </div>
 
-              {/* Liberação */}
-              <div
-                className={`card-soft flex items-center gap-4 p-7 ${
-                  bloqueado ? "bg-destructive/10" : "bg-success/10"
-                }`}
-              >
-                {bloqueado ? (
-                  <CircleAlert className="size-12 text-destructive" />
-                ) : (
-                  <ShieldCheck className="size-12 text-success" />
-                )}
+              <div className="card-soft flex items-center gap-4 bg-success/10 p-7">
+                <ShieldCheck className="size-12 text-success" />
                 <div>
-                  <p
-                    className={`text-2xl font-extrabold ${
-                      bloqueado ? "text-destructive" : "text-success"
-                    }`}
-                  >
-                    {bloqueado ? "REFEIÇÃO JÁ UTILIZADA HOJE" : "REFEIÇÃO LIBERADA"}
+                  <p className="text-2xl font-extrabold text-success">REFEIÇÃO LIBERADA</p>
+                  <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                    Tarifa regulamentada pelo município de Cascavel
                   </p>
-                  {bloqueado && (
-                    <p className="mt-1 text-sm font-semibold text-muted-foreground">
-                      Unidade: {cliente!.bloqueadoHoje!.unidade} • Horário:{" "}
-                      {cliente!.bloqueadoHoje!.hora}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Valor + pagamento */}
           <div className="space-y-6">
             <div className="card-soft p-3">
               <div className="grid grid-cols-4 gap-2">
@@ -393,7 +452,7 @@ function Atendimento() {
 
                 <button
                   onClick={() => setEtapa(2)}
-                  disabled={!valor || bloqueado}
+                  disabled={!valor}
                   className="mt-6 w-full rounded-2xl bg-primary py-5 text-xl font-extrabold uppercase text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                 >
                   Continuar para pagamento
@@ -410,13 +469,13 @@ function Atendimento() {
                   {(["Dinheiro", "PIX", "Crédito do cliente"] as const)
                     .filter((p) => !(semCpf && p === "Crédito do cliente"))
                     .map((p) => {
-                      const bloq = p === "Crédito do cliente" && credito < valor;
+                      const bloq = p === "Crédito do cliente" && creditoAtual < valor;
                       const Icone = p === "Dinheiro" ? Banknote : p === "PIX" ? QrCode : CreditCard;
 
                       return (
                         <button
                           key={p}
-                          disabled={bloq || bloqueado}
+                          disabled={bloq}
                           onClick={() => setPagamento(p)}
                           className={`flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-2xl border-2 px-4 py-6 text-lg font-extrabold uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                             pagamento === p
@@ -428,7 +487,7 @@ function Atendimento() {
                           {p === "Crédito do cliente" ? "Usar crédito" : p}
                           {p === "Crédito do cliente" && (
                             <span className="block text-xs font-bold normal-case opacity-80">
-                              Saldo {brl(credito)}
+                              Saldo {brl(creditoAtual)}
                             </span>
                           )}
                         </button>
@@ -438,7 +497,7 @@ function Atendimento() {
 
                 <button
                   onClick={() => setEtapa(3)}
-                  disabled={!pagamento || bloqueado}
+                  disabled={!pagamento}
                   className="mt-5 w-full rounded-2xl bg-primary py-5 text-xl font-extrabold uppercase text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                 >
                   Continuar para recebimento
@@ -452,43 +511,65 @@ function Atendimento() {
                   Recebimento
                 </p>
 
+                <div className="mt-4 space-y-2 rounded-2xl bg-muted p-4 text-sm font-semibold">
+                  <div className="flex justify-between">
+                    <span>Refeição do dia:</span>
+                    <b>{brl(valor)}</b>
+                  </div>
+                  <div className="flex justify-between border-t border-border pt-2 text-base font-black">
+                    <span>Total a Receber:</span>
+                    <span>{brl(totalACobrar)}</span>
+                  </div>
+                </div>
+
                 {usaCredito && (
-                  <div className="mt-5 space-y-1 rounded-2xl bg-secondary p-5 text-sm font-semibold text-secondary-foreground">
-                    <p>Valor refeição: {brl(valor)}</p>
-                    <p>Crédito atual: {brl(credito)}</p>
+                  <div className="mt-4 space-y-1 rounded-2xl bg-secondary p-5 text-sm font-semibold text-secondary-foreground">
+                    <p>Crédito atual: {brl(creditoAtual)}</p>
                     <p className="text-base font-extrabold">
-                      Saldo após atendimento: {brl(credito - valor)}
+                      Saldo após refeição: {brl(creditoAtual - valor)}
                     </p>
                   </div>
                 )}
 
                 {pagamento === "PIX" && (
-                  <div className="mt-5 space-y-1 rounded-2xl bg-secondary p-5 text-sm font-semibold text-secondary-foreground">
-                    <p>Valor refeição: {brl(valor)}</p>
+                  <div className="mt-4 space-y-1 rounded-2xl bg-secondary p-5 text-sm font-semibold text-secondary-foreground">
                     <p className="text-base font-extrabold">Pagamento via PIX selecionado</p>
+                    <p className="text-xs opacity-80">
+                      Confirme o recebimento do total de {brl(totalACobrar)} na chave do
+                      restaurante.
+                    </p>
                   </div>
                 )}
 
                 {pagamento === "Dinheiro" && (
-                  <div className="mt-5 rounded-2xl bg-muted p-5">
+                  <div className="mt-4 rounded-2xl bg-muted p-5">
                     <label className="text-sm font-extrabold uppercase tracking-widest text-muted-foreground">
-                      Valor recebido
+                      Valor recebido em mãos (R$)
                     </label>
                     <input
                       autoFocus
                       value={recebido}
-                      onChange={(e) => setRecebido(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0,1,2,3,4,5,6,7,8,9,]/g, "");
+                        setRecebido(val);
+                      }}
                       placeholder="0,00"
                       inputMode="decimal"
                       className="mt-2 w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-3xl font-extrabold outline-none focus:border-primary"
                     />
                     <div className="mt-4 flex items-end justify-between text-sm font-semibold">
-                      <span>Refeição {brl(valor)}</span>
+                      <span>Total devido {brl(totalACobrar)}</span>
                       <span>Recebido {brl(recebidoNum)}</span>
                       <span className="text-2xl font-extrabold text-primary">
                         Troco {brl(troco)}
                       </span>
                     </div>
+
+                    {recebidoNum > 0 && recebidoNum < totalACobrar && (
+                      <p className="mt-2 text-sm font-bold text-destructive">
+                        Valor recebido é menor que o total a cobrar.
+                      </p>
+                    )}
 
                     {troco > 0 && (
                       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -500,7 +581,7 @@ function Atendimento() {
                               : "border-border bg-card"
                           }`}
                         >
-                          Dar troco
+                          Devolver Troco
                         </button>
                         <button
                           onClick={() => setTrocoEmCredito(true)}
@@ -511,7 +592,7 @@ function Atendimento() {
                               : "border-border bg-card"
                           }`}
                         >
-                          Troco em crédito
+                          Troco em Crédito
                         </button>
                       </div>
                     )}
@@ -535,17 +616,27 @@ function Atendimento() {
                 </p>
                 <div className="mt-4 space-y-3 rounded-2xl bg-secondary p-5 text-lg font-semibold text-secondary-foreground">
                   <p className="flex justify-between gap-4">
-                    <span>Valor da refeição</span>
+                    <span>Refeição</span>
                     <b>{brl(valor)}</b>
                   </p>
-                  <p className="flex justify-between gap-4">
-                    <span>Pagamento</span>
-                    <b>{pagamento === "Crédito do cliente" ? "Crédito do cliente" : pagamento}</b>
+                  <p className="flex justify-between gap-4 border-t border-border pt-2">
+                    <span>Forma de Pagamento</span>
+                    <b>{pagamento}</b>
                   </p>
                   {pagamento === "Dinheiro" && (
                     <p className="flex justify-between gap-4">
-                      <span>{trocoEmCredito ? "Crédito gerado" : "Troco"}</span>
+                      <span>{trocoEmCredito ? "Troco em Crédito" : "Troco Devolvido"}</span>
                       <b>{brl(troco)}</b>
+                    </p>
+                  )}
+                  {cliente && (
+                    <p className="flex justify-between gap-4 border-t border-border pt-2 text-sm">
+                      <span>Saldo Final do Cidadão</span>
+                      <b>
+                        {brl(
+                          creditoAtual - (usaCredito ? valor : 0) + (trocoEmCredito ? troco : 0),
+                        )}
+                      </b>
                     </p>
                   )}
                 </div>
@@ -555,7 +646,7 @@ function Atendimento() {
                   disabled={!podeFinalizar}
                   className="mt-5 w-full rounded-3xl bg-primary py-8 text-3xl font-extrabold uppercase tracking-wide text-primary-foreground shadow-soft transition-colors hover:bg-[#176A45] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                 >
-                  {bloqueado ? "Atendimento bloqueado" : `Finalizar atendimento`}
+                  Finalizar atendimento
                 </button>
               </div>
             )}
@@ -565,7 +656,7 @@ function Atendimento() {
             <div className="rounded-2xl border-2 border-destructive bg-destructive/10 px-6 py-4 text-center text-destructive shadow-soft">
               <p className="text-xl font-black uppercase tracking-wide">Cadastro sem CPF</p>
               <p className="mt-1 text-sm font-bold">
-                Atendimento de consumidor final com valor fixo de R$ 7,00.
+                Atendimento de consumidor final com valor fixo de R$ 7,00 (sem acúmulo de créditos).
               </p>
             </div>
           )}

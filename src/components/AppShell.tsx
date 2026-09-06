@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ScanLine, UserRound, Users, Wallet, Wifi, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
+import logo from "@/img/logo.png";
 import { useStore } from "@/lib/rp-store";
 
 const nav = [
@@ -25,9 +26,7 @@ export function AppShell({
       <aside
         className={`sticky top-0 h-screen w-[112px] shrink-0 flex-col items-center gap-2 bg-sidebar py-5 text-sidebar-foreground shadow-soft ${hideSidebar ? "hidden" : "flex"}`}
       >
-        <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-accent text-2xl shadow-soft">
-          🍽️
-        </div>
+        <img src={logo} alt="Logo" className="mb-4 size-16 object-contain" />
         {nav.map((item) => (
           <Link
             key={item.to}
